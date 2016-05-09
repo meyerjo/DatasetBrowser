@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js" type="text/javascript"></script>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha256-MfvZlkHCEqatNoGiOXveE8FIwMzZg4W85qfrfIFBfYc= sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous"/>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"
+            integrity="sha256-Sk3nkD6mLTMOF0EOpNtsIry+s1CsaqQC1rVLTAy+0yc= sha512-K1qjQ+NcF2TYO/eI3M6v8EiNYZfA95pQumfvcVrTHtwQVDG+aHRqLi/ETn2uB+1JqwYqVG3LIvdm9lj6imS/pQ==" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+    <link rel="stylesheet" type="text/css" tal:attributes="href request.route_url('static', subpath='css/bootstrap-inverse-btn.css')" />
+    <script tal:attributes="src request.route_url('static', subpath='js/toggle_listelement.js')"></script>
+    <link rel="stylesheet" type="text/css" tal:attributes="href request.route_url('static', subpath='css/ekko-lightbox.min.css')"/>
+    <script tal:attributes="src request.route_url('static', subpath='js/ekko-lightbox.min.js')"></script>
+    <script>
+        $(document).delegate('*[data-toggle="lightbox"]', 'click', function(event) {
+            event.preventDefault();
+            $(this).ekkoLightbox();
+        });
+
+
+        $(document).ready(function() {
+            $('body').on('change', '.subkey_toggle_checkbox', function() {
+              $("#" + $(this).attr("value")).slideToggle("slow");
+            });
+
+            $("button").on('click', function() {
+                // TODO: check how to prevent the ids from reappearing
+                if ($(this).attr("data-content") != '') {
+                    return;
+                }
+
+                var IDs = [];
+                $(this).parent().find(".elements").each(function()
+                {
+                    IDs.push(this.id);
+                });
+
+                var html = $(document.createElement('div'));
+                $(IDs).each(function(i, val) {
+
+                    var checkbox_element = $(document.createElement('input')).
+                    attr("type", "checkbox").
+                    attr("value", val).
+                    attr("checked", "true").
+                    attr("class", "subkey_toggle_checkbox").
+                    attr("id", "checkbox_id_" + i);
+                    var label_element = $(document.createElement('label')).attr("for", "checkbox_id_" + i).text(val);
+                    html.append(checkbox_element);
+                    html.append(label_element);
+                    html.append($(document.createElement('br')));
+                });
+                $(this).attr("title", "Select specific subkeys");
+                $(this).attr("data-content", $(html).html());
+                $('[data-toggle="popover"]').popover()
+            });
+        });
+
+    </script>
+</head>
+<body>
+<nav class="navbar navbar-inverse">
+    <div class="container-fluid">
+        <div class="navbar-header" tal:switch="exists: pagetitle">
+            <a class="navbar-brand" href="/" tal:case="True" tal:content="pagetitle"></a>
+            <a class="navbar-brand" href="/" tal:case="False">Dataset Browser</a>
+        </div>
+        <div>
+            <ul class="nav navbar-nav">
+                <li class="active"><a href=".">Current Folder</a></li>
+                <li><a href="..">Previous Folder</a></li>
+                <li tal:condition="folders" tal:repeat="folder folders">
+                    <a tal:attributes="href folder" tal:content="folder" />
+                </li>
+                <li tal:condition="files" tal:repeat="(key, values) sorted(files.items())" class="dropdown">
+                    <a class="dropdown-toggle" data-toggle="dropdown" href="#" tal:content="key">
+                        <span class="caret"></span></a>
+                    <ul class="dropdown-menu">
+                        <li tal:repeat="file values"><a tal:attributes="href file" tal:content="file"/></li>
+                    </ul>
+                </li>
+            </ul>
+            <ul class="nav navbar-nav navbar-right">
+                <li tal:condition="request.has_permission('nooneshouldhavethispermission')"><a class="btn btn-inverse btn-md" href="/um">UserManagement</a></li>
+                <li tal:condition="exists: localsettingsfile"><a class="btn btn-inverse btn-md" href=".settings.json" tal:condition="localsettingsfile">Update local settings file</a></li>
+                <li tal:condition="exists: localsettingsfile"><a class="btn btn-inverse btn-md" href="?createlocalsettingsfile" tal:condition="not localsettingsfile">Create local settings file</a></li>
+                <li tal:condition="logged_in"><a class="btn btn-inverse btn-md" href="${request.application_url}/logout">Logout</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="col-sm-12">
+                ${structure: html}
+        </div>
+    </div>
+</div>
+</body>
+</html>
