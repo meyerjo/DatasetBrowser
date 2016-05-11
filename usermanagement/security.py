@@ -4,7 +4,7 @@ import os
 
 import yaml
 
-from datasetbrowser.users import User
+from usermanagement.users import User
 
 
 class UserManager:

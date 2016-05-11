@@ -44,17 +44,15 @@ class User:
 
     def set_roles(self, roles):
         for role in roles:
-            if (isinstance(role, tuple) or \
-                    isinstance(role, list)) and len(role) > 1:
+            if (isinstance(role, tuple) or isinstance(role, list)) and len(role) > 1:
                 rolename = role[1]
                 if role[0]:
                     self._roles = list(set(self._roles + [rolename]))
                 elif rolename in self._roles:
-                        self._roles.remove(rolename)
+                    self._roles.remove(rolename)
             else:
                 self._roles = role
                 break
-
 
     def get_setting(self, key):
         if not isinstance(key, (tuple, list)):

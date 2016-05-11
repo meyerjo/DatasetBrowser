@@ -3,7 +3,6 @@ import logging
 import os
 import re
 
-from chameleon import PageTemplate
 from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
@@ -12,19 +11,19 @@ from sqlalchemy import engine_from_config
 
 from datasetbrowser.requesthandler.directorySettingsHandler import DirectoryLoadSettings
 from models import initialize_sql
-from .security import UserManager, PythonUserManager, FileBasedUserManager
+from usermanagement.security import PythonUserManager, FileBasedUserManager
 
 log = logging.getLogger(__name__)
 
 
 def root_factory(settings):
     if 'authentication' not in settings:
-        return '.resources.NoAuthenticationRoot'
+        return 'usermanagement.resources.NoAuthenticationRoot'
     auth = settings['authentication']
     if auth == 'None':
-        return '.resources.NoAuthenticationRoot'
+        return 'usermanagement.resources.NoAuthenticationRoot'
     elif auth == 'standard':
-        return '.resources.Root'
+        return 'usermanagement.resources.Root'
     else:
         raise BaseException('Error: Unknown authentication setting [{0}]'.format(auth))
 
@@ -44,6 +43,7 @@ def load_usermanager(settings):
         elif settings['authentication'] == 'None':
             settings['usermanager'] = PythonUserManager()
     return settings
+
 
 def load_database_settings(settings):
     log = logging.getLogger(__name__)

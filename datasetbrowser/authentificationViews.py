@@ -3,12 +3,9 @@ import os
 
 import jsonpickle
 from pyramid.httpexceptions import HTTPFound
-from pyramid.renderers import render
-from pyramid.response import Response
 from pyramid.security import forget, remember
 from pyramid.view import view_config, forbidden_view_config
 
-from datasetbrowser.security import UserManager
 from datasetbrowser.requesthandler.directoryRequestHandler import DirectoryRequestHandler
 from datasetbrowser.requesthandler.fileHandler import open_resource
 
@@ -78,56 +75,83 @@ class AuthentificationViews:
                          headers=headers)
 
     @view_config(route_name='usermanagement', renderer='template/usermanagement.pt', permission='nooneshouldhavethispermission')
-    @view_config(route_name='usermanagement_action', renderer='json', permission='nooneshouldhavethispermission')
     def usermanagement(self):
         log = logging.getLogger(__name__)
-        error = None
-        if self.request.matched_route.name == 'usermanagement_action':
-            log.debug('Matched the action route, will process the request')
-            matchdict = self.request.matchdict
-            params = dict(self.request.params)
-
-            if 'roles' in params and isinstance(params['roles'], unicode):
-                params['roles'] = jsonpickle.decode(params['roles'])
-
-            if matchdict['action'] == 'updateuser':
-                try:
-                    log.info('Update user {0}'.format(matchdict['id']))
-                    self.request.registry.settings['usermanager'].update_user(matchdict['id'],
-                                                                             params['username'],
-                                                                             params['useractive'],
-                                                                             params['roles'])
-                    return {'error': None}
-                except BaseException as e:
-                    log.warning(e.message)
-                    return {'error': str(e.message)}
-            elif matchdict['action'] == 'deleteuser':
-                # let the request run through
-                if matchdict['id'] == params['username']:
-                    try:
-                        log.info('Delete user: {0}'.format(matchdict['id']))
-                        self.request.registry.settings['usermanager'].delete_user(matchdict['id'])
-                    except BaseException as e:
-                        log.warning(e.message)
-                        error = str(e.message)
-                    return {'error': error}
-            elif matchdict['action'] == 'adduser':
-                if matchdict['id'] == 'newuser':
-                    try:
-                        log.info('Try to add user "{0}" now'.format(params['username']))
-                        self.request.registry.settings['usermanager'].add_user(params['username'],
-                                                                               params['username'].lower(),
-                                                                               params['useractive'],
-                                                                               params['roles'])
-                    except BaseException as e:
-                        log.warning(e.message)
-                        error = str(e.message)
-                    return {'error': error}
 
         users = self.request.registry.settings['usermanager'].allUsers()
         aclgroups = self.request.root.get_all_groups()
         renderdict =  dict(folders=[], files=dict(),
                            logged_in=self.logged_in, users=users,
                            request=self.request, aclgroups=aclgroups,
-                           error=error)
+                           error=None)
         return renderdict
+
+
+    @view_config(route_name='usermanagement_action', renderer='json', permission='nooneshouldhavethispermission', match_param="action=updateuser")
+    def updateuser(self):
+        log = logging.getLogger(__name__)
+        matchdict = self.request.matchdict
+        params = dict(self.request.params)
+
+        if 'roles' in params and isinstance(params['roles'], unicode):
+            params['roles'] = jsonpickle.decode(params['roles'])
+
+        try:
+            log.info('Update user {0}'.format(matchdict['id']))
+            self.request.registry.settings['usermanager'].update_user(matchdict['id'],
+                                                                      params['username'],
+                                                                      params['useractive'],
+                                                                      params['roles'])
+            return {'error': None}
+        except BaseException as e:
+            log.warning(e.message)
+            return {'error': str(e.message)}
+
+
+    @view_config(route_name='usermanagement_action', renderer='json', permission='nooneshouldhavethispermission', match_param="action=deleteuser")
+    def deleteuser(self):
+        log = logging.getLogger(__name__)
+        matchdict = self.request.matchdict
+        params = dict(self.request.params)
+
+        if 'roles' in params and isinstance(params['roles'], unicode):
+            params['roles'] = jsonpickle.decode(params['roles'])
+
+        if matchdict['id'] == params['username']:
+            try:
+                log.info('Delete user: {0}'.format(matchdict['id']))
+                self.request.registry.settings['usermanager'].delete_user(matchdict['id'])
+                return dict(error=None)
+            except BaseException as e:
+                log.warning(e.message)
+                error = str(e.message)
+                return dict(error=error)
+        return dict(error='Names do not match {0} != {1}'.format(matchdict['id'], params['username']))
+
+    @view_config(route_name='usermanagement_action', renderer='json', permission='nooneshouldhavethispermission',
+                     match_param="action=adduser")
+    def adduser(self):
+        log = logging.getLogger(__name__)
+        matchdict = self.request.matchdict
+        params = dict(self.request.params)
+
+        if 'roles' in params and isinstance(params['roles'], unicode):
+            params['roles'] = jsonpickle.decode(params['roles'])
+
+        if matchdict['id'] == 'newuser':
+            try:
+                log.info('Try to add user "{0}" now'.format(params['username']))
+                self.request.registry.settings['usermanager'].add_user(params['username'],
+                                                                       params['username'].lower(),
+                                                                       params['useractive'],
+                                                                       params['roles'])
+                return dict(error=None)
+            except BaseException as e:
+                log.warning(e.message)
+                error = str(e.message)
+                return dict(error=error)
+        return dict(error='Invalid matchdict[id] field: {0}'.format(matchdict['id']))
+
+    @view_config(route_name='usermanagement_action', renderer='json', permission='nooneshouldhavethispermission')
+    def dummy(self):
+        return dict(error='Match param field didnt match any expecations')
