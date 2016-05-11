@@ -16,6 +16,55 @@ class AuthentificationViews:
         self.request = request
         self.logged_in = request.authenticated_userid
 
+
+    def _get_folder_description(self):
+        description_is_private = False
+        if 'privacy.description' in self.request.registry.settings:
+            description_is_private = self.request.registry.settings['privacy.description'] == 'private'
+
+        # load the information
+        try:
+            relative_path = DirectoryRequestHandler.requestfolderpath(self.request)
+            description = os.path.join(relative_path, '.description.json')
+            if not os.path.exists(description) or description_is_private:
+                return None
+            else:
+                with open_resource(description) as file:
+                    json_file = file.read()
+                    description_obj = jsonpickle.decode(json_file)
+                    return description_obj['shortdescription']
+        except BaseException as e:
+            log = logging.getLogger(__name__)
+            log.error(e.message)
+            return 'Error: {0}'.format(e.message)
+
+    @view_config(route_name='login', renderer='template/login.pt', request_param='form.submitted')
+    def login_request(self):
+        login_url = self.request.resource_url(self.request.context, 'login')
+        referrer = self.request.url
+        if referrer == login_url:
+            referrer = '/'  # never use the login form itself as came_from
+        came_from = self.request.params.get('came_from', referrer)
+        login = self.request.params['login']
+        password = self.request.params['password']
+        usermanager = self.request.registry.settings['usermanager']
+
+        if usermanager.validate_password(login, password):
+            headers = remember(self.request, login)
+            return HTTPFound(location=came_from,
+                             headers=headers)
+        else:
+            information = self._get_folder_description()
+            return dict(
+                message='Failed login',
+                url=self.request.application_url + '/login',
+                came_from=came_from,
+                login=login,
+                password=password,
+                information=information
+            )
+
+
     @view_config(route_name='login', renderer='template/login.pt')
     @forbidden_view_config(renderer='template/login.pt')
     def login(self):
@@ -27,37 +76,7 @@ class AuthentificationViews:
         message = ''
         login = ''
         password = ''
-        if 'form.submitted' in self.request.params:
-            login = self.request.params['login']
-            password = self.request.params['password']
-            usermanager = self.request.registry.settings['usermanager']
-
-            if usermanager.validate_password(login, password):
-                headers = remember(self.request, login)
-                return HTTPFound(location=came_from,
-                                 headers=headers)
-            message = 'Failed login'
-
-        description_is_private = False
-        if 'privacy.description' in self.request.registry.settings:
-            description_is_private = self.request.registry.settings['privacy.description'] == 'private'
-
-        # load the information
-        try:
-            relative_path = DirectoryRequestHandler.requestfolderpath(self.request)
-            description = os.path.join(relative_path, '.description.json')
-            if not os.path.exists(description) or description_is_private:
-                information = None
-            else:
-                with open_resource(description) as file:
-                    json_file = file.read()
-                    description_obj = jsonpickle.decode(json_file)
-                    information = description_obj['shortdescription']
-        except BaseException as e:
-            information = 'Error: {0}'.format(e.message)
-            log = logging.getLogger(__name__)
-            log.error(e.message)
-
+        information = self._get_folder_description()
 
         return dict(
             message=message,
